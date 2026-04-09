@@ -15,41 +15,80 @@ public class SqlSugarRepository<T> : SimpleClient<T>, ISqlSugarRepository<T> whe
     public SqlSugarRepository()
     {
         var iTenant = SqlSugarSetup.ITenant; // App.GetRequiredService<ISqlSugarClient>().AsTenant();
-        base.Context = iTenant.GetConnectionScope(SqlSugarConst.MainConfigId);
+        var tenantType = typeof(T);
 
-        // 若实体贴有多库特性，则返回指定库连接
-        if (typeof(T).IsDefined(typeof(TenantAttribute), false))
+        // 1. 检查是否需要忽略隔离
+        var ignoreAttr = tenantType.GetCustomAttribute<TenantIsolatedIgnoreAttribute>();
+        if (ignoreAttr != null)
+        {
+            // 必须在主数据库的实体
+            base.Context = iTenant.GetConnectionScope(SqlSugarConst.MainConfigId);
+            return;
+        }
+
+        // 2. 检查多库特性
+        if (tenantType.IsDefined(typeof(TenantAttribute), false))
         {
             base.Context = iTenant.GetConnectionScopeWithAttr<T>();
             return;
         }
 
-        // 若实体贴有日志表特性，则返回日志库连接
-        if (typeof(T).IsDefined(typeof(LogTableAttribute), false))
+        // 3. 检查日志表特性
+        if (tenantType.IsDefined(typeof(LogTableAttribute), false))
         {
             if (iTenant.IsAnyConnection(SqlSugarConst.LogConfigId))
                 base.Context = iTenant.GetConnectionScope(SqlSugarConst.LogConfigId);
             return;
         }
 
-        // 若实体贴有系统表特性，则返回默认库连接
-        if (typeof(T).IsDefined(typeof(SysTableAttribute), false))
-            return;
-
-        // 看请求头有没有租户id
-        var tenantId = App.HttpContext?.Request.Headers[ClaimConst.TenantId].FirstOrDefault();
-        if (tenantId == SqlSugarConst.MainConfigId) return;
-        else if (string.IsNullOrWhiteSpace(tenantId))
+        // 4. 检查系统表特性 - 根据租户类型决定是否隔离
+        if (tenantType.IsDefined(typeof(SysTableAttribute), false))
         {
-            // 若未贴任何表特性或当前未登录或是默认租户Id，则返回默认库连接
-            tenantId = App.User?.FindFirst(ClaimConst.TenantId)?.Value;
-            if (string.IsNullOrWhiteSpace(tenantId) || tenantId == SqlSugarConst.MainConfigId) return;
+            // 获取当前租户信息
+            var tenantId = App.HttpContext?.Request.Headers[ClaimConst.TenantId].FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(tenantId))
+            {
+                tenantId = App.User?.FindFirst(ClaimConst.TenantId)?.Value;
+            }
+
+            if (!string.IsNullOrWhiteSpace(tenantId) && tenantId != SqlSugarConst.MainConfigId)
+            {
+                var tenant = App.GetRequiredService<SysTenantService>().GetTenant(long.Parse(tenantId)).GetAwaiter().GetResult();
+                if (tenant != null && tenant.TenantType == TenantTypeEnum.Db)
+                {
+                    // 数据库隔离租户，使用租户数据库
+                    var tenantDb = App.GetRequiredService<SysTenantService>().GetTenantDbConnectionScope(long.Parse(tenantId));
+                    if (tenantDb != null)
+                    {
+                        base.Context = tenantDb;
+                        return;
+                    }
+                }
+            }
+
+            // 默认使用主数据库
+            base.Context = iTenant.GetConnectionScope(SqlSugarConst.MainConfigId);
+            return;
         }
 
-        // 根据租户Id切换库连接 为空则返回默认库连接
-        var sqlSugarScopeProviderTenant = App.GetRequiredService<SysTenantService>().GetTenantDbConnectionScope(long.Parse(tenantId));
-        if (sqlSugarScopeProviderTenant == null) return;
-        base.Context = sqlSugarScopeProviderTenant;
+        // 5. 默认处理逻辑 - 根据租户ID切换数据库
+        var defaultTenantId = App.HttpContext?.Request.Headers[ClaimConst.TenantId].FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(defaultTenantId))
+        {
+            defaultTenantId = App.User?.FindFirst(ClaimConst.TenantId)?.Value;
+        }
+
+        if (!string.IsNullOrWhiteSpace(defaultTenantId) && defaultTenantId != SqlSugarConst.MainConfigId)
+        {
+            var tenantDb = App.GetRequiredService<SysTenantService>().GetTenantDbConnectionScope(long.Parse(defaultTenantId));
+            if (tenantDb != null)
+            {
+                base.Context = tenantDb;
+                return;
+            }
+        }
+
+        base.Context = iTenant.GetConnectionScope(SqlSugarConst.MainConfigId);
     }
 
     #region 分表操作

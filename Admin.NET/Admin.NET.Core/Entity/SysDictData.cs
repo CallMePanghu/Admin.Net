@@ -11,8 +11,9 @@ namespace Admin.NET.Core;
 /// </summary>
 [SugarTable(null, "系统字典值表")]
 [SysTable]
+[TenantIsolatedIgnore]
 [SugarIndex("index_{table}_TV", nameof(DictTypeId), OrderByType.Asc, nameof(Value), OrderByType.Asc, IsUnique = true)]
-public partial class SysDictData : EntityBase
+public partial class SysDictData : EntityBaseTenant
 {
     /// <summary>
     /// 字典类型Id

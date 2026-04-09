@@ -11,6 +11,7 @@ namespace Admin.NET.Core;
 /// </summary>
 [SugarTable(null, "系统租户表")]
 [SysTable]
+[TenantIsolatedIgnore]
 public partial class SysTenant : EntityBase
 {
     /// <summary>

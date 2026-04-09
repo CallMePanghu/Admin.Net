@@ -97,6 +97,17 @@ public class SysTenantService : IDynamicApiController, ITransient
     }
 
     /// <summary>
+    /// 获取租户信息
+    /// </summary>
+    /// <param name="tenantId">租户ID</param>
+    /// <returns></returns>
+    [NonAction]
+    public async Task<SysTenant> GetTenant(long tenantId)
+    {
+        return await _sysTenantRep.GetFirstAsync(u => u.Id == tenantId);
+    }
+
+    /// <summary>
     /// 获取租户列表
     /// </summary>
     /// <returns></returns>

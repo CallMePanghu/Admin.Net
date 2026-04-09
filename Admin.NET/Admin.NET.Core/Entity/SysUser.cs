@@ -11,6 +11,7 @@ namespace Admin.NET.Core;
 /// </summary>
 [SugarTable(null, "系统用户表")]
 [SysTable]
+[TenantIsolatedIgnore]
 [SugarIndex("index_{table}_A", nameof(Account), OrderByType.Asc)]
 [SugarIndex("index_{table}_P", nameof(Phone), OrderByType.Asc)]
 public partial class SysUser : EntityBaseTenantOrg

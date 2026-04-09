@@ -461,6 +461,13 @@ public static class SqlSugarSetup
     /// <returns>是否属于当前配置</returns>
     private static bool IsEntityForConfig(Type entityType, DbConnectionConfig config)
     {
+        // 检查是否需要忽略隔离
+        var ignoreAttr = entityType.GetCustomAttribute<TenantIsolatedIgnoreAttribute>();
+        if (ignoreAttr != null)
+        {
+            return config.ConfigId.ToString() == SqlSugarConst.MainConfigId;
+        }
+
         switch (config.ConfigId.ToString())
         {
             case SqlSugarConst.MainConfigId:
@@ -686,11 +693,13 @@ public static class SqlSugarSetup
         var db = iTenant.GetConnectionScope(config.ConfigId.ToString());
         db.DbMaintenance.CreateDatabase();
 
-        // 获取所有业务表-初始化租户库表结构（排除系统表、日志表、特定库表）
+        // 获取所有业务表-初始化租户库表结构（排除忽略隔离的实体）
         var entityTypes = App.EffectiveTypes
             .Where(u => !u.GetCustomAttributes<IgnoreTableAttribute>().Any())
-            .Where(u => !u.IsInterface && !u.IsAbstract && u.IsClass && u.IsDefined(typeof(SugarTable), false) &&
-            !u.IsDefined(typeof(SysTableAttribute), false) && !u.IsDefined(typeof(LogTableAttribute), false) && !u.IsDefined(typeof(TenantAttribute), false)).ToList();
+            .Where(u => !u.IsInterface && !u.IsAbstract && u.IsClass && u.IsDefined(typeof(SugarTable), false))
+            .Where(u => !u.IsDefined(typeof(TenantIsolatedIgnoreAttribute), false)) // 新增：排除忽略隔离的实体
+            .Where(u => !u.IsDefined(typeof(LogTableAttribute), false))
+            .Where(u => !u.IsDefined(typeof(TenantAttribute), false)).ToList();
         if (entityTypes.Count == 0) return;
 
         foreach (var entityType in entityTypes)

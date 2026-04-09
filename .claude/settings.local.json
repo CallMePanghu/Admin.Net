@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(findstr /s /i \"class TenantAttribute\" *.cs)",
+      "Bash(find . -name \"*.cs\" -type f -exec grep -l \"TenantAttribute\" {} \\\\;)",
+      "Bash(dotnet build:*)"
+    ]
+  }
+}

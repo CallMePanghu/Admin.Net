@@ -11,6 +11,7 @@ namespace Admin.NET.Core;
 /// </summary>
 [SugarTable(null, "系统机构表")]
 [SysTable]
+[TenantIsolatedIgnore]
 [SugarIndex("index_{table}_N", nameof(Name), OrderByType.Asc)]
 [SugarIndex("index_{table}_C", nameof(Code), OrderByType.Asc)]
 [SugarIndex("index_{table}_T", nameof(Type), OrderByType.Asc)]

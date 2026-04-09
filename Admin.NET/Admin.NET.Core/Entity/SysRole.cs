@@ -11,6 +11,7 @@ namespace Admin.NET.Core;
 /// </summary>
 [SugarTable(null, "系统角色表")]
 [SysTable]
+[TenantIsolatedIgnore]
 [SugarIndex("index_{table}_N", nameof(Name), OrderByType.Asc)]
 [SugarIndex("index_{table}_C", nameof(Code), OrderByType.Asc)]
 public partial class SysRole : EntityBaseTenant

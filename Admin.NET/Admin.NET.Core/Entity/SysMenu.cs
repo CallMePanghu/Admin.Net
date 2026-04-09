@@ -11,9 +11,10 @@ namespace Admin.NET.Core;
 /// </summary>
 [SugarTable(null, "系统菜单表")]
 [SysTable]
+[TenantIsolatedIgnore]
 [SugarIndex("index_{table}_T", nameof(Title), OrderByType.Asc)]
 [SugarIndex("index_{table}_T2", nameof(Type), OrderByType.Asc)]
-public partial class SysMenu : EntityBase
+public partial class SysMenu : EntityBaseTenant
 {
     /// <summary>
     /// 父Id
